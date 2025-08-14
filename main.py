@@ -1,36 +1,38 @@
 from flask import Flask, request, Response, send_from_directory, send_file
-import hashlib, string, random, json, mimetypes, time
+import hashlib, string, random, json, mimetypes, time, psycopg2
 
 app = Flask(__name__)
-
-sessions = {}
-users = {}
 
 
 @app.route('/')
 def index():
     return send_file('index.html')
 
-@app.route('/static/<path:path>')
-def send_static(path):
-    return send_from_directory('statis', path)
-
 @app.route('/makeaccount', methods=['POST'])
 def makeaccount():
     data = request.json
-    if data["username"] in users.keys():
-        return "taken"
-    salt = ''.join(random.choices(string.ascii_letters, k=5))
-    hashed = hashlib.md5((data["password"]+salt).encode()).hexdigest()
-    users[data["username"]] = { "email": data["email"], "hash": hashed, "salt": salt }
-    with open("users.json", "w") as file:
-        file.write(json.dumps(users))
-    rand = ''.join(random.choices(string.ascii_letters, k=32))
-    while rand in sessions.keys():
+    if "username" not in data or "password" not in data or "email" not in data:
+        return "invalid request", 400
+
+    with conn.cursor() as curs:
+        cur = conn.cursor()
+        cur.execute('SELECT * FROM users WHERE username = %s', (data["username"],))
+        if len(cur.fetchall()) > 0:
+            return "username taken", 409
+
+        salt = ''.join(random.choices(string.ascii_letters, k=5))
+        hashed = hashlib.md5((data["password"]+salt).encode()).hexdigest()
+
+        cur.execute('INSERT INTO users (username, hash, salt, email) VALUES (%s, %s, %s, %s)', (data["username"],hashed,salt,data["email"]))
         rand = ''.join(random.choices(string.ascii_letters, k=32))
-    sessions[rand] = { "username": data["username"], "lastactive": time.time(), "chatbot": None }
-    print(sessions)
-    return rand
+        cur.execute('SELECT * FROM sessions WHERE username = %s', (rand,))
+        while len(cur.fetchall()) > 0:
+            rand = ''.join(random.choices(string.ascii_letters, k=32))
+            cur.execute('SELECT * FROM sessions WHERE username = %s', (rand,))
+        cur.execute('INSERT INTO sessions (username, key, lasttime)', (data["username"],rand,time.time()))
+
+        print(rand)
+        return "{\"token\":\"" + rand + "\"}", 200
 
 #@app.route('/startsession', methods=['POST'])
 #def startsession():
@@ -58,4 +60,5 @@ def makeaccount():
 #    }
 
 if __name__ == '__main__':
+    conn = psycopg2.connect("dbname=test user=postgres")
     app.run(host='0.0.0.0', port=8080)
