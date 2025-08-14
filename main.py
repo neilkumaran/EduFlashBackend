@@ -60,5 +60,5 @@ def makeaccount():
 #    }
 
 if __name__ == '__main__':
-    conn = psycopg2.connect("dbname=test user=postgres")
+    conn = psycopg2.connect("dbname=eduflash user=eduflash")
     app.run(host='0.0.0.0', port=8080)
