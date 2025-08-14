@@ -30,23 +30,39 @@ def makeaccount():
             rand = ''.join(random.choices(string.ascii_letters, k=32))
             cur.execute('SELECT * FROM sessions WHERE username = %s', (rand,))
         cur.execute('INSERT INTO sessions (username, key, lasttime) VALUES (%s, %s, %s)', (data["username"],rand,time.time()))
+        conn.commit()
 
         print(rand)
         return "{\"token\":\"" + rand + "\"}", 200
 
-#@app.route('/startsession', methods=['POST'])
-#def startsession():
-#    data = request.json
-#    if data["username"] not in users.keys():
-#        return "badpass"
-#    hashed = hashlib.md5((data["password"]+users[data["username"]]["salt"]).encode()).hexdigest()
-#    if hashed != users[data["username"]]["hash"]:
-#        return "badpass"
-#    rand = ''.join(random.choices(string.ascii_letters, k=32))
-#    while rand in sessions.keys():
-#        rand = ''.join(random.choices(string.ascii_letters, k=32))
-#    sessions[rand] = { "username": data["username"], "lastactive": time.time(), "chatbot": None }
-#    return rand
+@app.route('/startsession', methods=['POST'])
+def startsession():
+    data = request.json
+    if "username" not in data or "password" not in data:
+        return "invalid request", 400
+
+    with conn.cursor() as curs:
+        cur = conn.cursor()
+        cur.execute('SELECT (hash, salt) FROM users WHERE username = %s', (data["username"],))
+        row = cur.fetchone()
+        if row == None:
+            return "login failed", 401
+
+        hashed = hashlib.md5((data["password"]+row[1]).encode()).hexdigest()
+
+        if not row[0] == hashed:
+            return "login failed", 401
+        rand = ''.join(random.choices(string.ascii_letters, k=32))
+        cur.execute('SELECT * FROM sessions WHERE username = %s', (rand,))
+        while len(cur.fetchall()) > 0:
+            rand = ''.join(random.choices(string.ascii_letters, k=32))
+            cur.execute('SELECT * FROM sessions WHERE username = %s', (rand,))
+        cur.execute('INSERT INTO sessions (username, key, lasttime) VALUES (%s, %s, %s)', (data["username"],rand,time.time()))
+        conn.commit()
+
+        print(rand)
+        return "{\"token\":\"" + rand + "\"}", 200
+
 
 #@app.route('/profile', methods=['POST'])
 #def profile():
