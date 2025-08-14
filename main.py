@@ -29,7 +29,7 @@ def makeaccount():
         while len(cur.fetchall()) > 0:
             rand = ''.join(random.choices(string.ascii_letters, k=32))
             cur.execute('SELECT * FROM sessions WHERE username = %s', (rand,))
-        cur.execute('INSERT INTO sessions (username, key, lasttime)', (data["username"],rand,time.time()))
+        cur.execute('INSERT INTO sessions (username, key, lasttime) VALUES (%s, %s, %s)', (data["username"],rand,time.time()))
 
         print(rand)
         return "{\"token\":\"" + rand + "\"}", 200
