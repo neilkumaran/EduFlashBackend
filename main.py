@@ -44,9 +44,10 @@ def startsession():
     with conn.cursor() as curs:
         cur = conn.cursor()
         cur.execute('SELECT (hash, salt) FROM users WHERE username = %s', (data["username"],))
-        row = cur.fetchone()
+        row = cur.fetchone()[0]
         if row == None:
             return "login failed", 401
+        row = row[1:-1].split(",")
 
         hashed = hashlib.md5((data["password"]+row[1]).encode()).hexdigest()
 
