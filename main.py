@@ -1,7 +1,23 @@
-from flask import Flask, request, Response, send_from_directory, send_file
-import hashlib, string, random, json, mimetypes, time, psycopg2, math
+from flask import Flask, request, Response, send_from_directory, send_file, render_template_string, jsonify
+from flask_cors import CORS
+from dotenv import load_dotenv
+from openai import OpenAI
+import hashlib, string, random, json, mimetypes, time, psycopg2, math, os
 
 app = Flask(__name__)
+CORS(app, origins={"http://localhost:5501"}) #MODIFY THIS IN PROD TO eduflash.org!!!!! 
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__)) #root
+AI_DIR = os.path.join(BASE_DIR, "ai")
+
+# .env is in /ai
+load_dotenv(os.path.join(AI_DIR, ".env"))
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# save ai/prompt.txt into a var
+with open(os.path.join(AI_DIR, "prompt.txt"), "r", encoding="utf-8") as f:
+    prompt = f.read()
 
 def trust_factor(likes, dislikes, reports, views,
                  report_weight = 1.5,  # reports are weighed differently, 1 report = 3 dislikes
@@ -58,6 +74,9 @@ def scale(likes, dislikes, reports, views):
     else:
         return "Very Poor"
 
+@app.before_request
+def log_request_info():
+    print(f"[REQUEST] {request.method} {request.path}", flush=True)
 
 @app.route('/')
 def index():
@@ -119,6 +138,33 @@ def startsession():
         print(rand)
         return "{\"token\":\"" + rand + "\"}", 200
 
+# neils ai for manos create page
+@app.route("/generate", methods=["POST"])
+def generate():
+    data = request.get_json() or {}
+    topic = data.get("topic", "")
+    lang = data.get("lang", "")
+    print(f"[AI INPUT] topic={topic!r}, lang={lang!r}", flush=True)
+    
+    flask_output = gen_guide(topic, lang)
+
+    return jsonify({
+        "flaskoutput": flask_output
+    })
+
+def gen_guide(topic, lang):
+    given_prompt = f"{prompt}\nTopic: {topic}\nLanguage: {lang}"
+    print("Generating.....")
+    output = client.chat.completions.create(
+        model="gpt-5-mini",
+        messages=[
+            {"role": "system", "content": "You are a highly educated individual who will write educational guides for users based on their prompts."},
+            {"role": "user", "content": given_prompt}
+        ],
+        temperature=1
+    ).choices[0].message.content.strip()
+
+    return output
 
 #@app.route('/profile', methods=['POST'])
 #def profile():
