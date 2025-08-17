@@ -154,7 +154,7 @@ def profile():
 @app.route('/api/makepage', methods=['POST'])
 def makepage():
     data = request.json
-    if "token" not in data or "title" not in data or "topic" no in data or "file" not in request.files:
+    if "token" not in data or "title" not in data or "topic" not in data or "file" not in request.files:
         return "invalid request", 400
     file = request.files["file"]
     if file.filename == "":
