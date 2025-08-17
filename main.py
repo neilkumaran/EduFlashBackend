@@ -6,6 +6,16 @@ from openai import OpenAI
 
 app = Flask(__name__)
 
+CORS(app, origins={"http://localhost:5501"}) #MODIFY THIS IN PROD TO eduflash.org!!!!! 
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__)) #root
+AI_DIR = os.path.join(BASE_DIR, "ai")
+
+# .env is in /ai
+load_dotenv(os.path.join(AI_DIR, ".env"))
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
 with open(os.path.join(AI_DIR, "prompt.txt"), "r", encoding="utf-8") as f:
     prompt = f.read()
 
