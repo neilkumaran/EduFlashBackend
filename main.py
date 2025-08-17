@@ -1,5 +1,5 @@
 from flask import Flask, request, Response, send_from_directory, send_file
-import hashlib, string, random, json, mimetypes, time, psycopg2, math
+import hashlib, string, random, json, mimetypes, time, psycopg2, math, os
 from flask_cors import CORS
 from dotenv import load_dotenv
 from openai import OpenAI
