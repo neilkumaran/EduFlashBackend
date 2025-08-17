@@ -149,7 +149,7 @@ def getprofile():
             return cur.fetchall(), 200
         if "hash" in data:
             cur.execute("SELECT (hash, owner, likes, dislikes, reports, views, topic, title) FROM pages WHERE hash LIKE '%%' || LOWER(%s) || '%%' LIMIT 1", (data["hash"],))
-            return cur.fetchone()[0], 200
+            return cur.fetchone(), 200
         cur.execute('SELECT (hash, owner, likes, dislikes, reports, views, topic, title) FROM pages LIMIT 50')
         return cur.fetchall(), 200
 
