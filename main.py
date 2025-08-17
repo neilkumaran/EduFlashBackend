@@ -87,8 +87,7 @@ def makeaccount():
     if "/" in data["username"]:
         return "username taken", 409
 
-    with conn.cursor() as curs:
-        cur = conn.cursor()
+    with conn.cursor() as cur:
         cur.execute('SELECT * FROM users WHERE username = %s', (data["username"],))
         if len(cur.fetchall()) > 0:
             return "username taken", 409
@@ -114,8 +113,7 @@ def startsession():
     if "username" not in data or "password" not in data:
         return "invalid request", 400
 
-    with conn.cursor() as curs:
-        cur = conn.cursor()
+    with conn.cursor() as cur:
         cur.execute('SELECT (hash, salt) FROM users WHERE username = %s', (data["username"],))
         row = cur.fetchone()[0]
         if row == None:
@@ -141,7 +139,7 @@ def startsession():
 def getprofile():
     data = request.json
 
-    with conn.cursor() as curs:
+    with conn.cursor() as cur:
         if "topic" in data:
             cur.execute('SELECT (hash, owner, likes, dislikes, reports, views, topic, title) FROM pages WHERE topic LIKE %%s% LIMIT 50', (data["topic"],))
             return cur.fetchall(), 200
@@ -156,7 +154,7 @@ def profile():
     if "username" not in data:
         return "user not found", 400
 
-    with conn.cursor() as curs:
+    with conn.cursor() as cur:
         cur.execute('SELECT email FROM users WHERE username = %s', (data["username"],))
         email = cur.fetchone()[0]
         return {"email": email}, 200
@@ -170,7 +168,7 @@ def makepage():
     if file.filename == "":
         return "invalid request", 400
 
-    with conn.cursor() as curs:
+    with conn.cursor() as cur:
         cur.execute('SELECT username FROM sessions WHERE key = %s', (data["token"],))
         row = cur.fetchone()[0]
         if row == None:
@@ -188,7 +186,7 @@ def generate():
     if "token" not in data or "topic" not in data or "lang" not in data:
         return "invalid request", 400
 
-    with conn.cursor() as curs:
+    with conn.cursor() as cur:
         cur.execute('SELECT username FROM sessions WHERE key = %s', (data["token"],))
         row = cur.fetchone()[0]
         if row == None:
