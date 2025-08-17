@@ -77,7 +77,7 @@ def index():
     return send_file('index.html')
 
 @app.route('/pages/<path:path>')
-def pages():
+def pages(path):
     return send_from_directory('pages', path)
 
 @app.route('/api/makeaccount', methods=['POST'])
