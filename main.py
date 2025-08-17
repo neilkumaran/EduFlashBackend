@@ -178,7 +178,7 @@ def makepage():
         hashed = hashlib.md5(data["file"].encode()).hexdigest()
         with open("pages/" + hashed, "w") as file:
             file.write(data["file"])
-        cur.execute('INSERT INTO pages (hash, owner, topic, title, likes, dislikes, reports, views) VALUES (%s, %s, %s, %s, 0, 0, 0, 0)', (hashed,row,data["topic"],data["title"]))
+        cur.execute('INSERT INTO pages (hash, owner, topic, title, likes, dislikes, reports, views) VALUES (%s, %s, %s, %s, 0, 0, 0, 0)', (hashed,row,str(data["topic"]),data["title"]))
         conn.commit()
         return "Created", 201
 
