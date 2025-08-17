@@ -1,21 +1,11 @@
-from flask import Flask, request, Response, send_from_directory, send_file, render_template_string, jsonify
+from flask import Flask, request, Response, send_from_directory, send_file
+import hashlib, string, random, json, mimetypes, time, psycopg2, math
 from flask_cors import CORS
 from dotenv import load_dotenv
 from openai import OpenAI
-import hashlib, string, random, json, mimetypes, time, psycopg2, math, os
 
 app = Flask(__name__)
-CORS(app, origins={"http://localhost:5501"}) #MODIFY THIS IN PROD TO eduflash.org!!!!! 
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__)) #root
-AI_DIR = os.path.join(BASE_DIR, "ai")
-
-# .env is in /ai
-load_dotenv(os.path.join(AI_DIR, ".env"))
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-# save ai/prompt.txt into a var
 with open(os.path.join(AI_DIR, "prompt.txt"), "r", encoding="utf-8") as f:
     prompt = f.read()
 
@@ -74,19 +64,18 @@ def scale(likes, dislikes, reports, views):
     else:
         return "Very Poor"
 
-@app.before_request
-def log_request_info():
-    print(f"[REQUEST] {request.method} {request.path}", flush=True)
 
 @app.route('/')
 def index():
     return send_file('index.html')
 
-@app.route('/makeaccount', methods=['POST'])
+@app.route('/api/makeaccount', methods=['POST'])
 def makeaccount():
     data = request.json
     if "username" not in data or "password" not in data or "email" not in data:
         return "invalid request", 400
+    if "/" in data["username"]:
+        return "username taken", 409
 
     with conn.cursor() as curs:
         cur = conn.cursor()
@@ -109,7 +98,7 @@ def makeaccount():
         print(rand)
         return "{\"token\":\"" + rand + "\"}", 200
 
-@app.route('/startsession', methods=['POST'])
+@app.route('/api/startsession', methods=['POST'])
 def startsession():
     data = request.json
     if "username" not in data or "password" not in data:
@@ -128,7 +117,7 @@ def startsession():
         if not row[0] == hashed:
             return "login failed", 401
         rand = ''.join(random.choices(string.ascii_letters, k=32))
-        cur.execute('SELECT * FROM sessions WHERE username = %s', (rand,))
+        cur.execute('SELECT * FROM sessions WHERE key = %s', (rand,))
         while len(cur.fetchall()) > 0:
             rand = ''.join(random.choices(string.ascii_letters, k=32))
             cur.execute('SELECT * FROM sessions WHERE username = %s', (rand,))
@@ -136,46 +125,73 @@ def startsession():
         conn.commit()
 
         print(rand)
-        return "{\"token\":\"" + rand + "\"}", 200
+        return {"token": rand}, 200
+
+@app.route('/api/search', methods=['POST'])
+def profile():
+    data = request.json
+
+    with conn.cursor() as curs:
+        if "topic" in data:
+            cur.execute('SELECT (hash, owner, likes, dislikes, reports, views, topic, title) FROM pages WHERE topic LIKE %%s% LIMIT 50', (data["topic"],))
+            return cur.fetchall(), 200
+        if "title" in data:
+            cur.execute('SELECT (hash, owner, likes, dislikes, reports, views, topic, title) FROM pages WHERE topic LIKE %%s% LIMIT 50', (data["title"],))
+            return cur.fetchall(), 200
+    return "invalid request", 400
+
+@app.route('/api/profile', methods=['POST'])
+def profile():
+    data = request.json
+    if "username" not in data:
+        return "user not found", 400
+
+    with conn.cursor() as curs:
+        cur.execute('SELECT email FROM users WHERE username = %s', (data["username"],))
+        email = cur.fetchone()[0]
+        return {"email": email}, 200
+
+@app.route('/api/makepage', methods=['POST'])
+def makepage():
+    data = request.json
+    if "token" not in data or "title" not in data or "topic" no in data or "file" not in request.files:
+        return "invalid request", 400
+    file = request.files["file"]
+    if file.filename == "":
+        return "invalid request", 400
+
+    with conn.cursor() as curs:
+        cur.execute('SELECT username FROM sessions WHERE key = %s', (data["token"],))
+        row = cur.fetchone()[0]
+        if row == None:
+            return "invalid token", 403
+        hashed = hashlib.md5(file.read().encode()).hexdigest()
+        file.save("pages/" + hashed)
+        cur.execute('INSERT INTO pages (hash, owner, topic, title, likes, dislikes, reports, views) VALUES (%s, %s, %s, %s, 0, 0, 0, 0)', (hashed,row,data["topic"],data["title"]))
+        conn.commit()
+        return "Created", 201
 
 # neils ai for manos create page
-@app.route("/generate", methods=["POST"])
+@app.route("/api/generate", methods=['POST'])
 def generate():
-    data = request.get_json() or {}
-    topic = data.get("topic", "")
-    lang = data.get("lang", "")
-    print(f"[AI INPUT] topic={topic!r}, lang={lang!r}", flush=True)
-    
-    flask_output = gen_guide(topic, lang)
+    data = request.json
+    if "token" not in data or "topic" not in data or "lang" not in data:
+        return "invalid request", 400
 
-    return jsonify({
-        "flaskoutput": flask_output
-    })
+    with conn.cursor() as curs:
+        cur.execute('SELECT username FROM sessions WHERE key = %s', (data["token"],))
+        row = cur.fetchone()[0]
+        if row == None:
+            return "invalid token", 403
 
-def gen_guide(topic, lang):
-    given_prompt = f"{prompt}\nTopic: {topic}\nLanguage: {lang}"
-    print("Generating.....")
-    output = client.chat.completions.create(
+    return client.chat.completions.create(
         model="gpt-5-mini",
         messages=[
             {"role": "system", "content": "You are a highly educated individual who will write educational guides for users based on their prompts."},
-            {"role": "user", "content": given_prompt}
+            {"role": "user", "content": f"{prompt}\nTopic: {data['topic']}\nLanguage: {data['lang']}"}
         ],
         temperature=1
-    ).choices[0].message.content.strip()
-
-    return output
-
-#@app.route('/profile', methods=['POST'])
-#def profile():
-#    data = request.json
-#    if data["session"] not in sessions:
-#        return "session not found"
-#
-#    return {
-#        "username": sessions[data["session"]]["username"],
-#        "email": users[sessions[data["session"]]["username"]]["email"],
-#    }
+    ).choices[0].message.content.strip(), 200
 
 if __name__ == '__main__':
     conn = psycopg2.connect(dbname="eduflash", user="eduflash", host="127.0.0.1")
