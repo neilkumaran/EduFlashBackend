@@ -138,7 +138,7 @@ def startsession():
         return {"token": rand}, 200
 
 @app.route('/api/search', methods=['POST'])
-def profile():
+def getprofile():
     data = request.json
 
     with conn.cursor() as curs:
