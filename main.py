@@ -144,9 +144,13 @@ def getprofile():
             cur.execute('SELECT (hash, owner, likes, dislikes, reports, views, topic, title) FROM pages WHERE topic LIKE %%s% LIMIT 50', (data["topic"],))
             return cur.fetchall(), 200
         if "title" in data:
-            cur.execute('SELECT (hash, owner, likes, dislikes, reports, views, topic, title) FROM pages WHERE topic LIKE %%s% LIMIT 50', (data["title"],))
+            cur.execute('SELECT (hash, owner, likes, dislikes, reports, views, topic, title) FROM pages WHERE title LIKE %%s% LIMIT 50', (data["title"],))
             return cur.fetchall(), 200
-    return "invalid request", 400
+        if "hash" in data:
+            cur.execute('SELECT (hash, owner, likes, dislikes, reports, views, topic, title) FROM pages WHERE hash LIKE %%s% LIMIT 1', (data["hash"],))
+            return cur.fetchone()[0], 200
+        cur.execute('SELECT (hash, owner, likes, dislikes, reports, views, topic, title) FROM pages LIMIT 50')
+        return cur.fetchall(), 200
 
 @app.route('/api/profile', methods=['POST'])
 def profile():
