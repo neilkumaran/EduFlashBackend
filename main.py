@@ -1,12 +1,9 @@
 from flask import Flask, request, Response, send_from_directory, send_file
 import hashlib, string, random, json, mimetypes, time, psycopg2, math, os
-from flask_cors import CORS
 from dotenv import load_dotenv
 from openai import OpenAI
 
 app = Flask(__name__)
-
-CORS(app, origins={"http://localhost:5501"}) #MODIFY THIS IN PROD TO eduflash.org!!!!! 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__)) #root
 AI_DIR = os.path.join(BASE_DIR, "ai")
@@ -78,6 +75,10 @@ def scale(likes, dislikes, reports, views):
 @app.route('/')
 def index():
     return send_file('index.html')
+
+@app.route('/pages/<path:path>')
+def pages():
+    return send_from_directory('pages', path)
 
 @app.route('/api/makeaccount', methods=['POST'])
 def makeaccount():
@@ -166,10 +167,7 @@ def profile():
 @app.route('/api/makepage', methods=['POST'])
 def makepage():
     data = request.json
-    if "token" not in data or "title" not in data or "topic" not in data or "file" not in request.files:
-        return "invalid request", 400
-    file = request.files["file"]
-    if file.filename == "":
+    if "token" not in data or "title" not in data or "topic" not in data or "file" not in data:
         return "invalid request", 400
 
     with conn.cursor() as cur:
@@ -177,8 +175,9 @@ def makepage():
         row = cur.fetchone()[0]
         if row == None:
             return "invalid token", 403
-        hashed = hashlib.md5(file.read().encode()).hexdigest()
-        file.save("pages/" + hashed)
+        hashed = hashlib.md5(data["file"].encode()).hexdigest()
+        with open("pages/" + hashed, "w") as file:
+            file.write(data["file"])
         cur.execute('INSERT INTO pages (hash, owner, topic, title, likes, dislikes, reports, views) VALUES (%s, %s, %s, %s, 0, 0, 0, 0)', (hashed,row,data["topic"],data["title"]))
         conn.commit()
         return "Created", 201
