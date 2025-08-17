@@ -142,13 +142,13 @@ def getprofile():
 
     with conn.cursor() as cur:
         if "topic" in data:
-            cur.execute('SELECT (hash, owner, likes, dislikes, reports, views, topic, title) FROM pages WHERE topic LIKE %%s% LIMIT 50', (data["topic"],))
+            cur.execute("SELECT (hash, owner, likes, dislikes, reports, views, topic, title) FROM pages WHERE topic LIKE '\\%' || LOWER(%s) || '\\%' LIMIT 50", (data["topic"],))
             return cur.fetchall(), 200
         if "title" in data:
-            cur.execute('SELECT (hash, owner, likes, dislikes, reports, views, topic, title) FROM pages WHERE title LIKE %%s% LIMIT 50', (data["title"],))
+            cur.execute("SELECT (hash, owner, likes, dislikes, reports, views, topic, title) FROM pages WHERE title LIKE '\\%' || LOWER(%s) || '\\%' LIMIT 50", (data["title"],))
             return cur.fetchall(), 200
         if "hash" in data:
-            cur.execute('SELECT (hash, owner, likes, dislikes, reports, views, topic, title) FROM pages WHERE hash LIKE %%s% LIMIT 1', (data["hash"],))
+            cur.execute("SELECT (hash, owner, likes, dislikes, reports, views, topic, title) FROM pages WHERE hash LIKE '\\%' || LOWER(%s) || '\\%' LIMIT 1", (data["hash"],))
             return cur.fetchone()[0], 200
         cur.execute('SELECT (hash, owner, likes, dislikes, reports, views, topic, title) FROM pages LIMIT 50')
         return cur.fetchall(), 200
