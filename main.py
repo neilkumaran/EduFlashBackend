@@ -199,7 +199,7 @@ def generate():
             return "invalid token", 403
 
     return client.chat.completions.create(
-        model="gpt-5-mini",
+        model="gpt-5-nano",
         messages=[
             {"role": "system", "content": "You are a highly educated individual who will write educational guides for users based on their prompts."},
             {"role": "user", "content": f"{prompt}\nTopic: {data['topic']}\nLanguage: {data['lang']}"}
