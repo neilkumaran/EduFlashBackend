@@ -24,7 +24,7 @@ prompt = open("prompt.txt", "r", encoding="utf-8").read()
 def gen_guide(topic, lang):
     given_prompt = f"{prompt}\nTopic: {topic}\nLanguage: {lang}"
     output = client.chat.completions.create(
-        model = "gpt-5-mini",
+        model = "gpt-5-nano",
         messages=[
             {"role": "system", "content": "You are a highly educated individual who will write educational guides for users based on their prompts."},
             {"role": "user", "content": given_prompt}
