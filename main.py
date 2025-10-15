@@ -116,7 +116,10 @@ def startsession():
 
     with conn.cursor() as cur:
         cur.execute('SELECT (hash, salt) FROM users WHERE username = %s', (data["username"],))
-        row = cur.fetchone()[0]
+        row = cur.fetchone()
+        if row == None:
+            return
+        row = row[0]
         if row == None:
             return "login failed", 401
         row = row[1:-1].split(",")
