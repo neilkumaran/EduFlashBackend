@@ -209,6 +209,7 @@ def generate():
     ).choices[0].message.content.strip(), 200
 
 @app.route("/api/like", methods=['POST'])
+def like():
     data = request.json
     if "token" not in data or "hash" not in data:
         return "invalid request", 400
@@ -223,6 +224,7 @@ def generate():
         return "Liked", 201
 
 @app.route("/api/dislike", methods=['POST'])
+def dislike():
     data = request.json
     if "token" not in data or "hash" not in data:
         return "invalid request", 400
@@ -237,6 +239,7 @@ def generate():
         return "Disliked", 201
 
 @app.route("/api/metrics", methods=['POST'])
+def metrics():
     data = request.json
     if "hash" not in data:
         return "invalid request", 400
