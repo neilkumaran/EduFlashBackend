@@ -200,7 +200,7 @@ def generate():
         row = row[0]
 
     return client.chat.completions.create(
-        model="gpt-5-mini",
+        model="gpt-5-micro",
         messages=[
             {"role": "system", "content": "You are a highly educated individual who will write educational guides for users based on their prompts."},
             {"role": "user", "content": f"{prompt}\nTopic: {data['topic']}\nLanguage: {data['lang']}"}
