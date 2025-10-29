@@ -181,7 +181,7 @@ def makepage():
         hashed = hashlib.md5(data["file"].encode()).hexdigest()
         with open("pages/" + hashed, "w") as file:
             file.write(data["file"])
-        cur.execute('INSERT INTO pages (hash, owner, topic, title, likes, dislikes, reports, views) VALUES (%s, %s, %s, %s, 0, 0, 0, 0)', (hashed,row,str(data["topic"]),data["title"]))
+        cur.execute('INSERT INTO pages (hash, owner, topic, title, likes, dislikes, reports, views) VALUES (%s, %s, %s, %s, {}, {}, 0, 0)', (hashed,row,str(data["topic"]),data["title"]))
         conn.commit()
         return "Created", 201
 
@@ -194,9 +194,10 @@ def generate():
 
     with conn.cursor() as cur:
         cur.execute('SELECT username FROM sessions WHERE key = %s', (data["token"],))
-        row = cur.fetchone()[0]
+        row = cur.fetchone()
         if row == None:
             return "invalid token", 403
+        row = row[0]
 
     return client.chat.completions.create(
         model="gpt-5-mini",
@@ -206,6 +207,55 @@ def generate():
         ],
         temperature=1
     ).choices[0].message.content.strip(), 200
+
+@app.route("/api/like", methods=['POST'])
+    data = request.json
+    if "token" not in data or "hash" not in data:
+        return "invalid request", 400
+
+    with conn.cursor() as cur:
+        cur.execute('SELECT username FROM sessions WHERE key = %s', (data["token"],))
+        row = cur.fetchone()[0]
+        if row == None:
+            return "invalid token", 403
+        cur.execute('update pages set likes = array_append(likes,%s) where not %s=any(likes) and hash=%s', (row,row,data["hash"]))
+        conn.commit()
+        return "Liked", 201
+
+@app.route("/api/dislike", methods=['POST'])
+    data = request.json
+    if "token" not in data or "hash" not in data:
+        return "invalid request", 400
+
+    with conn.cursor() as cur:
+        cur.execute('SELECT username FROM sessions WHERE key = %s', (data["token"],))
+        row = cur.fetchone()[0]
+        if row == None:
+            return "invalid token", 403
+        cur.execute('update pages set dislikes = array_append(dislikes,%s) where not %s=any(dislikes) and hash=%s', (row,row,data["hash"]))
+        conn.commit()
+        return "Disliked", 201
+
+@app.route("/api/metrics", methods=['POST'])
+    data = request.json
+    if "hash" not in data:
+        return "invalid request", 400
+
+    with conn.cursor() as cur:
+        try:
+            cur.execute('SELECT array_length(likes) FROM pages WHERE hash = %s', (data["hash"],))
+            likes = int(cur.fetchone()[0])
+            cur.execute('SELECT array_length(dislikes) FROM pages WHERE hash = %s', (data["hash"],))
+            dislikes = int(cur.fetchone()[0])
+            cur.execute('SELECT array_length(reports) FROM pages WHERE hash = %s', (data["hash"],))
+            reports = int(cur.fetchone()[0])
+            cur.execute('SELECT array_length(views) FROM pages WHERE hash = %s', (data["hash"],))
+            views = int(cur.fetchone()[0])
+            rating = scale(likes, dislikes, reports, views)
+            return {"likes": likes, "dislikes": dislikes, "reports": reports, "views": views}, 200
+        except:
+            pass
+        return "not found", 404
 
 if __name__ == '__main__':
     conn = psycopg2.connect(dbname="eduflash", user="eduflash", host="127.0.0.1")
