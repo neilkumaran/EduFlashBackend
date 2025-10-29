@@ -200,7 +200,7 @@ def generate():
         row = row[0]
 
     return client.chat.completions.create(
-        model="gpt-5-micro",
+        model="gpt-5-nano",
         messages=[
             {"role": "system", "content": "You are a highly educated individual who will write educational guides for users based on their prompts."},
             {"role": "user", "content": f"{prompt}\nTopic: {data['topic']}\nLanguage: {data['lang']}"}
@@ -246,18 +246,22 @@ def metrics():
 
     with conn.cursor() as cur:
         try:
-            cur.execute('SELECT array_length(likes) FROM pages WHERE hash = %s', (data["hash"],))
-            likes = int(cur.fetchone()[0])
-            cur.execute('SELECT array_length(dislikes) FROM pages WHERE hash = %s', (data["hash"],))
-            dislikes = int(cur.fetchone()[0])
-            cur.execute('SELECT array_length(reports) FROM pages WHERE hash = %s', (data["hash"],))
-            reports = int(cur.fetchone()[0])
-            cur.execute('SELECT array_length(views) FROM pages WHERE hash = %s', (data["hash"],))
-            views = int(cur.fetchone()[0])
+            cur.execute('SELECT array_length(likes, 1) FROM pages WHERE hash = %s', (data["hash"],))
+            likes = cur.fetchone()[0]
+            likes = 0 if likes==None else int(likes)
+            cur.execute('SELECT array_length(dislikes, 1) FROM pages WHERE hash = %s', (data["hash"],))
+            dislikes = cur.fetchone()[0]
+            dislikes = 0 if dislikes==None else int(dislikes)
+            cur.execute('SELECT reports FROM pages WHERE hash = %s', (data["hash"],))
+            reports = cur.fetchone()[0]
+            reports = 0 if reports==None else int(reports)
+            cur.execute('SELECT views FROM pages WHERE hash = %s', (data["hash"],))
+            views = cur.fetchone()[0]
+            views = 0 if views==None else int(views)
             rating = scale(likes, dislikes, reports, views)
-            return {"likes": likes, "dislikes": dislikes, "reports": reports, "views": views}, 200
-        except:
-            pass
+            return {"likes": likes, "dislikes": dislikes, "reports": reports, "views": views, "rating": rating}, 200
+        except Exception as e:
+            print(e)
         return "not found", 404
 
 if __name__ == '__main__':
